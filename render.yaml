@@ -1,0 +1,16 @@
+services:
+  - type: worker          # Background worker (no HTTP port needed)
+    name: downloader-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt && apt-get install -y ffmpeg || true
+    startCommand: python bot.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false       # Set in Render dashboard
+      - key: ADMIN_IDS
+        sync: false
+      - key: MONGO_URI
+        sync: false       # Use MongoDB Atlas free tier
+      - key: DB_NAME
+        value: downloader_bot
+    autoDeploy: true
