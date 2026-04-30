@@ -20,17 +20,6 @@ logger = logging.getLogger(__name__)
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 
-async def on_startup(bot: Bot, db: Database):
-    await db.connect()
-    await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
-    logger.info(f"Webhook set: {WEBHOOK_URL}")
-
-
-async def on_shutdown(bot: Bot):
-    await bot.delete_webhook()
-    logger.info("Webhook deleted")
-
-
 def main():
     bot = Bot(
         token=BOT_TOKEN,
@@ -51,19 +40,29 @@ def main():
     dp.include_router(admin.router)
     dp.include_router(stats.router)
 
-    dp.startup.register(lambda: on_startup(bot, db))
-    dp.shutdown.register(lambda: on_shutdown(bot))
+    # ── Startup / shutdown hooks (aiogram 3 style) ──────
+    async def on_startup():
+        await db.connect()
+        await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
+        logger.info(f"Webhook set: {WEBHOOK_URL}")
 
-    # aiohttp web app
+    async def on_shutdown():
+        await bot.delete_webhook()
+        logger.info("Webhook deleted")
+
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
+
+    # ── aiohttp web app ─────────────────────────────────
     app = web.Application()
 
-    # Health check — Render requires a port/response to keep service alive
     async def health(request):
         return web.Response(text="Bot is running!")
 
     app.router.add_get("/", health)
     app.router.add_get("/health", health)
 
+    # Must call setup_application BEFORE run_app
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
 
