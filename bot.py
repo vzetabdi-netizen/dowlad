@@ -1,11 +1,12 @@
-import asyncio
 import logging
+from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-from config import BOT_TOKEN
+from config import BOT_TOKEN, WEBHOOK_HOST, WEBHOOK_PATH, WEBAPP_HOST, WEBAPP_PORT
 from database import Database
 from handlers import start, downloader, admin, payment, stats
 from middlewares.throttle import ThrottlingMiddleware
@@ -16,8 +17,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
-async def main():
+
+async def on_startup(bot: Bot, db: Database):
+    await db.connect()
+    await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
+    logger.info(f"Webhook set: {WEBHOOK_URL}")
+
+
+async def on_shutdown(bot: Bot):
+    await bot.delete_webhook()
+    logger.info("Webhook deleted")
+
+
+def main():
     bot = Bot(
         token=BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -26,26 +40,36 @@ async def main():
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
 
-    # Init DB
     db = Database()
-    await db.connect()
-
-    # Attach db to dispatcher
     dp["db"] = db
 
-    # Middlewares
     dp.message.middleware(ThrottlingMiddleware(rate_limit=1.5))
 
-    # Routers
     dp.include_router(start.router)
     dp.include_router(payment.router)
     dp.include_router(downloader.router)
     dp.include_router(admin.router)
     dp.include_router(stats.router)
 
-    logger.info("Bot started!")
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    dp.startup.register(lambda: on_startup(bot, db))
+    dp.shutdown.register(lambda: on_shutdown(bot))
+
+    # aiohttp web app
+    app = web.Application()
+
+    # Health check — Render requires a port/response to keep service alive
+    async def health(request):
+        return web.Response(text="Bot is running!")
+
+    app.router.add_get("/", health)
+    app.router.add_get("/health", health)
+
+    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
+    setup_application(app, dp, bot=bot)
+
+    logger.info(f"Starting on {WEBAPP_HOST}:{WEBAPP_PORT}")
+    web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

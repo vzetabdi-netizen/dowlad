@@ -1,16 +1,22 @@
 services:
-  - type: worker          # Background worker (no HTTP port needed)
+  - type: web                   # Web Service — has a public URL + open port
     name: downloader-bot
     runtime: python
-    buildCommand: pip install -r requirements.txt && apt-get install -y ffmpeg || true
+    buildCommand: |
+      pip install -r requirements.txt
+      apt-get update && apt-get install -y ffmpeg || true
     startCommand: python bot.py
+    healthCheckPath: /health     # Render pings this to confirm service is up
     envVars:
       - key: BOT_TOKEN
-        sync: false       # Set in Render dashboard
+        sync: false              # Set manually in Render dashboard
       - key: ADMIN_IDS
         sync: false
       - key: MONGO_URI
-        sync: false       # Use MongoDB Atlas free tier
+        sync: false              # Use MongoDB Atlas free tier
       - key: DB_NAME
         value: downloader_bot
+      - key: WEBHOOK_HOST
+        sync: false              # Set to: https://your-app-name.onrender.com
+      # PORT is set automatically by Render — no need to add it
     autoDeploy: true

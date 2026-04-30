@@ -6,6 +6,13 @@ load_dotenv()
 # ─── Bot ───────────────────────────────────────────────
 BOT_TOKEN: str = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
 
+# ─── Webhook (Render Web Service) ──────────────────────
+# WEBHOOK_HOST = your Render public URL, e.g. https://my-bot.onrender.com
+WEBHOOK_HOST: str = os.getenv("WEBHOOK_HOST", "https://your-app.onrender.com")
+WEBHOOK_PATH: str = os.getenv("WEBHOOK_PATH", f"/webhook/{BOT_TOKEN}")
+WEBAPP_HOST: str = "0.0.0.0"
+WEBAPP_PORT: int = int(os.getenv("PORT", 8080))  # Render sets PORT automatically
+
 # ─── Admin ─────────────────────────────────────────────
 ADMIN_IDS: list[int] = [
     int(x) for x in os.getenv("ADMIN_IDS", "123456789").split(",") if x
