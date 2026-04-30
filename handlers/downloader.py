@@ -111,10 +111,12 @@ async def handle_link(message: Message, db: Database):
             logger.exception(f"Document fallback also failed: {e2}")
             await status_msg.edit_text("❌ Failed to send the video. Please try again.")
     finally:
-        # Cleanup temp file
+        # Cleanup temp file + its temp dir (best-effort)
         try:
-            if filepath and os.path.exists(filepath):
-                os.remove(filepath)
-                os.rmdir(os.path.dirname(filepath))
+            import shutil
+            if filepath:
+                tmpdir = os.path.dirname(filepath)
+                if tmpdir and os.path.isdir(tmpdir):
+                    shutil.rmtree(tmpdir, ignore_errors=True)
         except Exception:
             pass
