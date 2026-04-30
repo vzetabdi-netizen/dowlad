@@ -29,7 +29,7 @@ DEFAULT_PRO_PRICE_STARS: int = 100  # Telegram Stars
 
 # ─── Downloader ────────────────────────────────────────
 DOWNLOAD_TIMEOUT: int = 60          # seconds
-MAX_FILE_SIZE_MB: int = 50          # Telegram limit = 50 MB bots
+MAX_FILE_SIZE_MB: int = 500         # 500 MB limit
 
 # ─── Supported platforms ───────────────────────────────
 SUPPORTED_DOMAINS = {
