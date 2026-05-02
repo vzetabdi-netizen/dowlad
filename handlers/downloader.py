@@ -16,7 +16,7 @@ async def prompt_download(message: Message):
     await message.answer("📎 Send me a video link and I'll download it for you!")
 
 
-@router.message(F.text.regexp(r"https?://"))
+@router.message(F.text.contains("http://") | F.text.contains("https://"))
 async def handle_link(message: Message, db: Database):
     user_id = message.from_user.id
     await db.ensure_user(user_id, message.from_user.username, message.from_user.full_name)
